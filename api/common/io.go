@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	SYS_STDOUT = os.Stdout
+	SYS_STDOUT         = os.Stdout
+	Default_Err_Prefix = Prefix{Prefix: "error", Time: true}
 )
 
 type Prefix struct {
