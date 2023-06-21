@@ -18,3 +18,17 @@ if err != nil && err != io.EOF {
 //deregister service from console
 client.DeregisterService("serviceId")
 ```
+
+### **common output**
+```go
+import "github.com/oswaldoooo/cmirco/api/common"
+var erroroutput=common.Prefix{Prefix:"error",Time:true}
+var warnoutput=common.Prefix{Prefix:"warning",Time:true}
+func main(){
+    // common.SetDebug()//direct output to terminal
+    // common.SetRelease("running.log",false,0600)//output to running.log
+    common.Output("without any prefix")
+    common.OutputWithPrefix(&erroroutput,"error there")
+    common.OutputWithPrefix(&warnoutput,"warn there")
+}
+```

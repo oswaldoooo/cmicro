@@ -2,8 +2,6 @@ module github.com/oswaldoooo/cmirco
 
 go 1.20
 
-require github.com/gorilla/mux v1.8.0
-
 require (
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/fatih/color v1.12.0 // indirect
@@ -25,5 +23,4 @@ require (
 	github.com/go-kit/log v0.2.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/hashicorp/consul/api v1.20.0
-	github.com/satori/go.uuid v1.2.0
 )
