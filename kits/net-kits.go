@@ -8,6 +8,8 @@ import (
 
 type Conn interface {
 	Decode([]byte) error
+	NeedSave() bool      //when decode failed,is need save here
+	Save([]byte)         //save function,and never failed
 	Do() error           //you should do reponse or bad_response insid it after did it's work
 	IsClose() bool       //decide is close the session
 	Response() error     //send response to client
@@ -30,18 +32,23 @@ func ListenAndServe(socket_method, address string, conreg func(net.Conn) Conn, e
 			tcon := conreg(con)
 			buffer := make([]byte, Buffer_Size)
 			var lang int
-			for !tcon.IsClose() {
-				lang, err = con.Read(buffer)
-				if err == nil {
-					err = tcon.Decode(buffer[:lang])
+			go func() {
+				for !tcon.IsClose() {
+					lang, err = con.Read(buffer)
 					if err == nil {
-						err = tcon.Do()
+						err = tcon.Decode(buffer[:lang])
+						if err == nil {
+							err = tcon.Do()
+						} else if tcon.NeedSave() {
+							//decode failed and need save
+							tcon.Save(buffer[:lang])
+						}
+					}
+					if err != nil && err != io.EOF {
+						errchan <- err
 					}
 				}
-				if err != nil && err != io.EOF {
-					errchan <- err
-				}
-			}
+			}()
 		} else if err != io.EOF {
 			errchan <- err
 		}
