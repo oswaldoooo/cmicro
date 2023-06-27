@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -61,10 +62,24 @@ func Output(format string, args ...any) {
 	}
 	fmt.Fprintf(SYS_STDOUT, format, args...)
 }
-func OuptutWithPrefix(pfx *Prefix, format string, args ...any) {
+func OutputWithPrefix(pfx *Prefix, format string, args ...any) {
 	format = make_prefix(pfx) + format
 	if format[len(format)-1] != '\n' {
 		format += "\n"
 	}
 	fmt.Fprintf(SYS_STDOUT, format, args...)
+}
+
+// read config
+type Cnf interface{
+	Marshal()([]byte,error)
+	Unmarshal([]byte)error
+}
+
+func ReadConfig(filepath string,v Cnf)error{
+	content,err:=ioutil.ReadFile(filepath)
+	if err==nil{
+		err=v.Unmarshal(content)
+	}
+	return err
 }

@@ -74,11 +74,11 @@ func newbasic_client(add string, port int) (ConsoleClient, error) {
 
 // actmode
 const (
-	STOP       = 1
-	START      = 0
-	RESTART    = 2
-	RELOAD     = 3
-	deregister = 999
+	STOP       = 567
+	START      = 220
+	RESTART    = 443
+	RELOAD     = 789
+	Deregister = 999
 )
 
 func (s *basic_client) RegisterService(serviceName string, instanceId string, act actmode, address *Address) error {
@@ -122,7 +122,7 @@ func (s *basic_client) DeregisterService(instanceId string) error {
 	if len(instanceId) > 0 {
 		ans["id"] = instanceId
 	}
-	ans["actmode"] = strconv.Itoa(deregister)
+	ans["actmode"] = strconv.Itoa(Deregister)
 	rep, err := s.Send(&request{ArgVal: ans})
 	if err == nil {
 		if len(rep.Err) == 0 {
