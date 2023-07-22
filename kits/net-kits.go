@@ -17,7 +17,7 @@ type Conn interface {
 }
 
 var (
-	Buffer_Size = 5 << 10
+	Buffer_Size = 5 << 10 //outsid can change the buffer size
 )
 
 func ListenAndServe(socket_method, address string, conreg func(net.Conn) Conn, errchan chan<- error) {
