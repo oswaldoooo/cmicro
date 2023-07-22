@@ -1,4 +1,4 @@
-module github.com/oswaldoooo/cmirco
+module github.com/oswaldoooo/cmicro
 
 go 1.20
 

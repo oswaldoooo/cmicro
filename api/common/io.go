@@ -11,6 +11,7 @@ import (
 var (
 	SYS_STDOUT         = os.Stdout
 	Default_Err_Prefix = Prefix{Prefix: "error", Time: true}
+	Time_Format        = time.Layout
 )
 
 type Prefix struct {
@@ -19,16 +20,16 @@ type Prefix struct {
 	Tags   []string `json:"tags"`
 }
 
-func make_prefix(data *Prefix) string {
+func make_prefix(data *Prefix, format string) string {
 	ans := ""
 	if len(data.Prefix) > 0 {
 		ans = "[" + data.Prefix + "]"
 	}
 	if data.Time && len(data.Tags) > 0 {
-		ans += " " + time.Now().Format(time.Kitchen) + " " + strings.Join(data.Tags, " ")
+		ans += " " + time.Now().Format(format) + " " + strings.Join(data.Tags, " ")
 	} else if data.Time || (data.Tags == nil || len(data.Tags) == 0) {
 		if data.Time {
-			ans += " " + time.Now().Format(time.Kitchen)
+			ans += " " + time.Now().Format(format)
 		} else {
 			ans += " " + strings.Join(data.Tags, " ")
 		}
@@ -63,7 +64,7 @@ func Output(format string, args ...any) {
 	fmt.Fprintf(SYS_STDOUT, format, args...)
 }
 func OutputWithPrefix(pfx *Prefix, format string, args ...any) {
-	format = make_prefix(pfx) + format
+	format = make_prefix(pfx, Time_Format) + format
 	if format[len(format)-1] != '\n' {
 		format += "\n"
 	}
@@ -88,6 +89,7 @@ func ReadConfig(filepath string, v Cnf) error {
 type Outputer struct {
 	prefix Prefix
 	finfo  *os.File
+	Format string //format time string
 }
 
 func NewOutputer(out string, pre Prefix) *Outputer {
@@ -111,7 +113,7 @@ func (s *Outputer) Output(format string, args ...any) {
 	fmt.Fprintf(s.finfo, format, args...)
 }
 func (s *Outputer) OutputWithPrefix(format string, args ...any) {
-	format = make_prefix(&s.prefix) + format
+	format = make_prefix(&s.prefix, s.Format) + format
 	if format[len(format)-1] != '\n' {
 		format += "\n"
 	}
