@@ -1,4 +1,31 @@
 ## **CMIRCO**
+### **Share Mutex**
+Use Example
+```go
+import(
+	"fmt"
+	"github.com/oswaldoooo/api/mutex"
+)
+func main(){
+	err := api.DialMutexCloudBackGround("127.0.0.1", 9000)//your mutex server host and port
+	if err==nil{
+		var mutex_id int32=3
+		var ok bool
+		ok,err=mutex.TryLock(mutex_id)
+		if err==nil{
+			if ok{
+				fmt.Println("lock success")
+				err=mutex.Unlock(mutex_id)
+			}else{
+				fmt.Println("lock failed")
+			}
+		}
+	}
+	if err!=nil{
+		fmt.Println("[error]",err.Error())
+	}
+}
+```
 ![](console.png)
 ### **console_api**
 ```go
