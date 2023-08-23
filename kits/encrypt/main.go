@@ -10,6 +10,7 @@ import (
 var register_encrper = map[string]func(keypair ...any) (Cryptor, error){"des": new_des_Cryptor, "rsa": new_rsa_Cryptor, "rsa_en": new_rsa_encrper, "rsa_de": new_rsa_decrper}
 var Lack_Args_ERR = fmt.Errorf("lack args")
 
+type regfunchandle func(keypair ...any) (Cryptor, error)
 type Cryptor interface {
 	Encrpyt(src []byte) (ans []byte, err error)
 	Decrpyt(src []byte) (ans []byte, err error)
@@ -65,4 +66,17 @@ func new_des_Cryptor(key ...any) (Cryptor, error) {
 		return &des_Cryptor{block: block, key: key[0].([]byte)}, nil
 	}
 	return nil, err
+}
+
+const (
+	Force = 90
+	Smart = 91
+)
+
+func Register_Cipher(name string, regfunc regfunchandle, mod int8) bool {
+	if _, ok := register_encrper[name]; !ok || mod == Force {
+		register_encrper[name] = regfunc
+		return true
+	}
+	return false
 }
