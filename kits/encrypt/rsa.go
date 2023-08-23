@@ -58,11 +58,11 @@ func (s *rsa_encrper) Decrpyt(src []byte) (ans []byte, err error) {
 	}
 	return
 }
-func new_rsa_encrper(key ...[]byte) (Cryptor, error) {
+func new_rsa_encrper(key ...any) (Cryptor, error) {
 	if len(key) < 1 {
 		return nil, Lack_Args_ERR
 	}
-	block, _ := pem.Decode(key[0])
+	block, _ := pem.Decode(key[0].([]byte))
 	bi, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err == nil {
 		pk, ok := bi.(*rsa.PublicKey)
@@ -72,11 +72,11 @@ func new_rsa_encrper(key ...[]byte) (Cryptor, error) {
 	}
 	return nil, err
 }
-func new_rsa_decrper(key ...[]byte) (Cryptor, error) {
+func new_rsa_decrper(key ...any) (Cryptor, error) {
 	if len(key) < 1 {
 		return nil, Lack_Args_ERR
 	}
-	block, _ := pem.Decode(key[0])
+	block, _ := pem.Decode(key[0].([]byte))
 	bi, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err == nil {
 		return &rsa_encrper{privatekey: bi}, nil
@@ -86,7 +86,7 @@ func new_rsa_decrper(key ...[]byte) (Cryptor, error) {
 }
 
 // [private,public]
-func new_rsa_Cryptor(key ...[]byte) (Cryptor, error) {
+func new_rsa_Cryptor(key ...any) (Cryptor, error) {
 	if len(key) < 2 {
 		return nil, Lack_Args_ERR
 	}
@@ -96,7 +96,7 @@ func new_rsa_Cryptor(key ...[]byte) (Cryptor, error) {
 		block_private *pem.Block
 	)
 	ans.hsh = sha256.New()
-	block_private, _ = pem.Decode(key[0])
+	block_private, _ = pem.Decode(key[0].([]byte))
 	if block_private == nil {
 		err = fmt.Errorf("get block private pem failed")
 		return nil, err
@@ -104,7 +104,7 @@ func new_rsa_Cryptor(key ...[]byte) (Cryptor, error) {
 
 	ans.privatekey, err = x509.ParsePKCS1PrivateKey(block_private.Bytes)
 	if err == nil {
-		block_public, _ := pem.Decode(key[1])
+		block_public, _ := pem.Decode(key[1].([]byte))
 		if block_public == nil {
 			err = fmt.Errorf("get block private pem failed")
 			return nil, err
