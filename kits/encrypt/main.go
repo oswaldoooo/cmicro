@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-var register_encrper = map[string]func(keypair ...[]byte) (Cryptor, error){"des": new_des_Cryptor, "rsa": new_rsa_Cryptor, "rsa_en": new_rsa_encrper, "rsa_de": new_rsa_decrper}
+var register_encrper = map[string]func(keypair ...any) (Cryptor, error){"des": new_des_Cryptor, "rsa": new_rsa_Cryptor, "rsa_en": new_rsa_encrper, "rsa_de": new_rsa_decrper}
 var Lack_Args_ERR = fmt.Errorf("lack args")
 
 type Cryptor interface {
@@ -15,7 +15,7 @@ type Cryptor interface {
 	Decrpyt(src []byte) (ans []byte, err error)
 }
 
-func GetCryptor(name string, keypair ...[]byte) (ans Cryptor, err error) {
+func GetCryptor(name string, keypair ...any) (ans Cryptor, err error) {
 	if regfunc, ok := register_encrper[name]; ok {
 		ans, err = regfunc(keypair...)
 		return
@@ -54,15 +54,15 @@ func (s *des_Cryptor) Decrpyt(src []byte) (ans []byte, err error) {
 	s.pkc5(&ans)
 	return
 }
-func new_des_Cryptor(key ...[]byte) (Cryptor, error) {
+func new_des_Cryptor(key ...any) (Cryptor, error) {
 	if len(key) < 1 {
 		return nil, Lack_Args_ERR
 	}
 	var block cipher.Block
 	var err error
-	block, err = des.NewCipher(key[0])
+	block, err = des.NewCipher(key[0].([]byte))
 	if err == nil {
-		return &des_Cryptor{block: block, key: key[0]}, nil
+		return &des_Cryptor{block: block, key: key[0].([]byte)}, nil
 	}
 	return nil, err
 }
