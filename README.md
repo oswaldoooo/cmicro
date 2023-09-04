@@ -1,4 +1,26 @@
 ## **CMIRCO**
+### cipher library
+**example**
+```go
+import(
+    "github.com/oswaldoooo/cmicro/kits/encrypt"
+    _ "github.com/oswaldoooo/cmicro/pkg/encrypt"
+)
+func main(){
+    cipher, err := encrypt.GetCryptor("dy_cipher", 200)
+	if err == nil {
+		ans, _ := cipher.Encrpyt([]byte(testwds))
+		fmt.Printf("[encrypt]\n%s\n", string(ans))
+		ans, err = cipher.Decrpyt(ans)
+		if err == nil {
+			fmt.Println(string(ans))
+		}
+	}
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+}
+```
 ### **Share Mutex**
 Use Example
 ```go
