@@ -1,4 +1,43 @@
 ## **CMIRCO**
+### Share Memory
+**posix**
+```go
+import (
+	"github.com/oswaldoooo/cmicro/sys"
+	"fmt"
+)
+func main(){
+	var te *int32
+	ptr:=sys.Shm_Open("test.shm",4,&te)
+	if ptr!=nil{
+		fmt.Println("data",*te)
+		*te+=1//change share memory content
+		sys.Shm_Close(ptr,4)
+	}else{
+		fmt.Println("[error] open test.shm failed")
+	}
+	
+}
+```
+**system v**
+```go
+import (
+	"github.com/oswaldoooo/cmicro/sys"
+	"fmt"
+)
+func main(){
+	var te *int32
+	shmid:=3
+	ptr:=sys.GetShare_Mem(3,&te)
+	if ptr!=nil{
+		fmt.Println("data",*te)
+		*te+=1//change share memory content
+		sys.Close_Share_Mem(ptr)
+	}else{
+		fmt.Println("[error] open share memory failed which shmid is 3")
+	}
+}
+```
 ### cipher library
 **example**
 ```go
