@@ -39,7 +39,7 @@ import (
 )
 
 // system v share memory open
-func GetShare_Mem[T int | int32 | int64](shmid int, dst_ptr **T) uintptr {
+func GetShare_Mem[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64](shmid int, dst_ptr **T) uintptr {
 	shm, _, err := syscall.Syscall(syscall.SYS_SHMAT, uintptr(shmid), 0, 0)
 	if len(err.Error()) < 1 {
 		*dst_ptr = (*T)(unsafe.Pointer(shm))
@@ -47,7 +47,7 @@ func GetShare_Mem[T int | int32 | int64](shmid int, dst_ptr **T) uintptr {
 	}
 	return shm
 }
-func CreateShare_Mem[T int | int32 | int64](pathname string, gendid int, dst_ptr **T) uintptr {
+func CreateShare_Mem[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64](pathname string, gendid int, dst_ptr **T) uintptr {
 	pn := C.CString(pathname)
 	key := C.ftok(pn, (C.int)(gendid))
 	C.free(unsafe.Pointer(pn))
@@ -78,7 +78,7 @@ func Close_Share_Mem(shm uintptr) error {
 }
 
 // posix share memory interface
-func Shm_Open[T int | int32 | int64](pathname string, dst **T) unsafe.Pointer {
+func Shm_Open[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64](pathname string, dst **T) unsafe.Pointer {
 	pathinfo := C.CString(pathname)
 	var te T
 	ansptr := C.open_shm(pathinfo, (C.int)(unsafe.Sizeof(te)))
