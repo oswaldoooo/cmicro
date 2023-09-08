@@ -8,8 +8,8 @@ package sys
 #include <stdio.h>
 #include <unistd.h>
 static int shmflag=IPC_CREAT|0640;
-void* open_shm(char* pathname,int sizes){
-	int shmid=shm_open(pathname,O_RDWR|O_CREAT,0640);
+void* open_shm(char* pathname,int sizes,short sysinfo){
+	int shmid=(sysinfo==1)?shm_open(pathname,O_RDWR|O_CREAT,0644):open(pathname,O_RDWR|O_CREAT,0644);
 	if (shmid>0){
 		if(ftruncate(shmid,sizes)!=-1){
 			void* ans=mmap(NULL,sizes,PROT_READ|PROT_WRITE,MAP_SHARED,shmid,0);
@@ -34,9 +34,12 @@ void unmap(void* src,int sizes){
 import "C"
 import (
 	"fmt"
+	"runtime"
 	"syscall"
 	"unsafe"
 )
+
+var sysinfo = runtime.GOOS
 
 // system v share memory open
 func GetShare_Mem[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64](shmid int, dst_ptr **T) uintptr {
@@ -81,7 +84,13 @@ func Close_Share_Mem(shm uintptr) error {
 func Shm_Open[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64](pathname string, dst **T) unsafe.Pointer {
 	pathinfo := C.CString(pathname)
 	var te T
-	ansptr := C.open_shm(pathinfo, (C.int)(unsafe.Sizeof(te)))
+	var code int8
+	if sysinfo == "linux" {
+		code = 1
+	} else {
+		code = 0
+	}
+	ansptr := C.open_shm(pathinfo, (C.int)(unsafe.Sizeof(te)), (C.short)(code))
 	if ansptr != nil {
 		*dst = (*T)(unsafe.Pointer(ansptr))
 	}
@@ -99,4 +108,10 @@ func Shm_Del(shm_name string) {
 	shm_cname := C.CString(shm_name)
 	C.shm_unlink(shm_cname)
 	C.free(unsafe.Pointer(shm_cname))
+}
+
+type ShmPosix[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64] interface {
+	Open(pathname string, dst **T)
+	Close(ptr unsafe.Pointer)
+	Unlink(shm_name string)
 }
