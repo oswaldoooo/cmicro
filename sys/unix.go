@@ -35,11 +35,12 @@ import "C"
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"syscall"
 	"unsafe"
 )
 
-var sysinfo = runtime.GOOS
+var sysinfo = strings.ToLower(runtime.GOOS)
 
 // system v share memory open
 func GetShare_Mem[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64](shmid int, dst_ptr **T) uintptr {
@@ -106,7 +107,9 @@ func Shm_Close(ptr unsafe.Pointer, sizes int) {
 // posix share memory delete interface
 func Shm_Del(shm_name string) {
 	shm_cname := C.CString(shm_name)
-	C.shm_unlink(shm_cname)
+	if sysinfo == "linux" {
+		C.shm_unlink(shm_cname)
+	}
 	C.free(unsafe.Pointer(shm_cname))
 }
 
