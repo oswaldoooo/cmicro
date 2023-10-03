@@ -34,6 +34,7 @@ void unmap(void* src,int sizes){
 import "C"
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 	"syscall"
@@ -109,6 +110,8 @@ func Shm_Del(shm_name string) {
 	shm_cname := C.CString(shm_name)
 	if sysinfo == "linux" {
 		C.shm_unlink(shm_cname)
+	} else {
+		os.Remove(shm_name)
 	}
 	C.free(unsafe.Pointer(shm_cname))
 }
