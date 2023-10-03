@@ -1,6 +1,7 @@
 package common
 
 import (
+	"net"
 	"strconv"
 	"strings"
 )
@@ -27,6 +28,17 @@ func Inet_Aton(src string) uint32 {
 			return 0
 		}
 		ans += uint32(tinumber) * Pow[uint32](256, uint8(k))
+	}
+	return ans
+}
+func Inet_NtoA(src uint32) net.IP {
+	var (
+		ans []byte = make([]byte, 4)
+		i   uint
+	)
+	for i = 0; i < 4; i++ {
+		ans[i] = uint8(src % 256)
+		src = src / 256
 	}
 	return ans
 }
