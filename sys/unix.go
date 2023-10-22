@@ -34,6 +34,7 @@ void unmap(void* src,int sizes){
 import "C"
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"runtime"
 	"strings"
@@ -120,4 +121,33 @@ type ShmPosix[T int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64]
 	Open(pathname string, dst **T)
 	Close(ptr unsafe.Pointer)
 	Unlink(shm_name string)
+}
+
+func (s *UnixEn) ShmAt(pathname string, size int64) (unsafe.Pointer, error) {
+	shmid, _, err := syscall.Syscall(syscall.SYS_SHMGET, uintptr(C.ftok(C.CString(pathname), C.int(rand.Intn(10)))), uintptr(size), 0100|0640)
+	if len(err.Error()) == 0 {
+		var mem uintptr
+		mem, _, err = syscall.Syscall(syscall.SYS_SHMAT, shmid, 0, 0)
+		if len(err.Error()) == 0 {
+			ptr := unsafe.Pointer(mem)
+			s.resource_map.Store(ptr, mem)
+			return ptr, nil
+		}
+	}
+	return nil, err
+}
+func (s *UnixEn) ShmDt(ptr unsafe.Pointer) {
+	mem, ok := s.resource_map.Load(ptr)
+	if ok {
+		_, _, err := syscall.Syscall(syscall.SYS_SHMDT, mem.(uintptr), 0, 0)
+		if len(err.Error()) != 0 {
+			fmt.Fprintln(os.Stderr, "close systemv share memory failed", err.Error())
+		}
+	} else {
+		fmt.Fprintln(os.Stderr, "invaild share memory address")
+	}
+}
+
+func (s *UnixEn) ShmDel(_ unsafe.Pointer) {
+	panic("not implemented") // TODO: Implement
 }
