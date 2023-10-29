@@ -33,10 +33,6 @@ type SystemV interface {
 type UnixEn struct {
 	resource_map sync.Map
 }
-type Semaphore struct {
-	count uint8 //just count
-	mutex sync.Mutex
-}
 
 func (s *UnixEn) ShmOpen(pathname string, size int64) (unsafe.Pointer, error) {
 	var (
@@ -83,27 +79,4 @@ func (s *UnixEn) ShmUnlink(pathname string) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "shm unlink error", err.Error())
 	}
-}
-
-// semaphore
-func (s *Semaphore) Wait() uint8 {
-	for s.wait() == -1 {
-	}
-	return s.count
-}
-func (s *Semaphore) wait() int8 {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if s.count < 1 {
-		return -1
-	} else {
-		s.count--
-		return int8(s.count)
-	}
-}
-func (s *Semaphore) Post() uint8 {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.count++
-	return s.count
 }

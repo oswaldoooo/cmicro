@@ -1,6 +1,7 @@
 package sys
 
 /*
+#include <sys/sem.h>
 #include <sys/shm.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -33,9 +34,11 @@ void unmap(void* src,int sizes){
 */
 import "C"
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
+	"reflect"
 	"runtime"
 	"strings"
 	"syscall"
@@ -150,4 +153,80 @@ func (s *UnixEn) ShmDt(ptr unsafe.Pointer) {
 
 func (s *UnixEn) ShmDel(_ unsafe.Pointer) {
 	panic("not implemented") // TODO: Implement
+}
+
+//semaphore
+
+const (
+	SYSTEMV   = 0x01
+	SETVAL    = 0x10
+	IPC_RMID  = 0
+	IPC_EXCL  = 02000
+	IPC_CREAT = 01000
+	SEM_UNDO  = 0x1000
+)
+
+type Semaphore interface {
+	Post()
+	Wait()
+	Close() error
+}
+
+type systemv_sem int
+
+func (s systemv_sem) Post() {
+	var sembuf C.struct_sembuf
+	sembuf.sem_num = 0
+	sembuf.sem_op = 1
+	sembuf.sem_flg = SEM_UNDO
+	syscall.Syscall(syscall.SYS_SEMOP, uintptr(s), uintptr(unsafe.Pointer(&sembuf)), 1)
+}
+
+func (s systemv_sem) Wait() {
+	var sembuf C.struct_sembuf
+	sembuf.sem_num = 0
+	sembuf.sem_op = -1
+	sembuf.sem_flg = SEM_UNDO
+	syscall.Syscall(syscall.SYS_SEMOP, uintptr(s), uintptr(unsafe.Pointer(&sembuf)), 1)
+}
+
+func (s systemv_sem) Close() error {
+	ok, _, err := syscall.Syscall(syscall.SYS_SEMCTL, uintptr(s), 0, IPC_RMID)
+	if ok == 0 {
+		return nil
+	}
+	return err
+}
+func CreateSem(mod uint8, opts ...any) (sem Semaphore, err error) {
+	var (
+		mod_ uintptr = 0644
+	)
+	if len(opts) > 0 {
+		for _, ele := range opts {
+			switch reflect.TypeOf(ele).Kind() {
+			case reflect.Int:
+				mod_ = uintptr(ele.(int))
+			case reflect.String:
+
+			default:
+				err = errors.New("unknow options")
+				return
+			}
+		}
+	}
+	if mod == SYSTEMV {
+		var semid, ok uintptr
+		semid, _, err = syscall.Syscall(syscall.SYS_SEMGET, uintptr(C.ftok(C.CString("./"), C.int(8))), 1, mod_|01000)
+		if semid > 0 {
+			ok, _, err = syscall.Syscall6(syscall.SYS_SEMCTL, semid, 0, SETVAL, 0, 0, 0)
+			if ok == 0 {
+				err = nil
+				sem = systemv_sem(semid)
+				return
+			}
+		}
+	} else {
+		err = errors.New("unkonw modtype")
+	}
+	return
 }
