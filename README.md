@@ -1,4 +1,32 @@
 ## **CMIRCO**
+### Any Function Loader
+`can load any function in golang;`use example
+```go
+import (
+	"fmt"
+	"plugin"
+	"github.com/oswaldoooo/cmicro/api/common"
+)
+
+func main() {
+	pl, err := plugin.Open("plugin/one.so")//open plugin file
+	if err == nil {
+		var (
+			onetemp func(string) string //template func
+			twotemp func(string) int 
+			testone common.PluginOption = common.PluginOption{Name: "Testone", Target: onetemp}// tell plugin loader function is args
+			testtwo common.PluginOption = common.PluginOption{Name: "Testtwo", Target: twotemp}
+		)
+		lang := common.LoadPlugin(pl, &testone, &testtwo)//get function instance
+		if lang > 0 {
+			onetemp = testone.Target.(func(string) string)
+			twotemp = testtwo.Target.(func(string) int)
+			fmt.Println(onetemp("jim"), twotemp("hello"))//do function
+		}
+	}
+
+}
+```
 ### Advanced IO 
 `implement io.ReadWriteCloser`
 ```go
