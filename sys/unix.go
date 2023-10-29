@@ -155,6 +155,12 @@ func (s *UnixEn) ShmDel(_ unsafe.Pointer) {
 	panic("not implemented") // TODO: Implement
 }
 
+type str_error string
+
+func (s str_error) Error() string {
+	return string(s)
+}
+
 //semaphore
 
 const (
@@ -164,6 +170,10 @@ const (
 	IPC_EXCL  = 02000
 	IPC_CREAT = 01000
 	SEM_UNDO  = 0x1000
+)
+const (
+	SETVAL_DARWIN   = 0x08
+	SEM_UNDO_DARWIN = 010000
 )
 
 type Semaphore interface {
@@ -218,7 +228,14 @@ func CreateSem(mod uint8, opts ...any) (sem Semaphore, err error) {
 		var semid, ok uintptr
 		semid, _, err = syscall.Syscall(syscall.SYS_SEMGET, uintptr(C.ftok(C.CString("./"), C.int(8))), 1, mod_|01000)
 		if semid > 0 {
-			ok, _, err = syscall.Syscall6(syscall.SYS_SEMCTL, semid, 0, SETVAL, 0, 0, 0)
+			if sysinfo == "darwin" {
+				ok, _, err = syscall.Syscall6(syscall.SYS_SEMCTL, semid, 0, SETVAL_DARWIN, 0, 0, 0)
+			} else if sysinfo == "linux" {
+				ok, _, err = syscall.Syscall6(syscall.SYS_SEMCTL, semid, 0, SETVAL, 0, 0, 0)
+			} else {
+				err = str_error("don't support system " + sysinfo)
+				return
+			}
 			if ok == 0 {
 				err = nil
 				sem = systemv_sem(semid)

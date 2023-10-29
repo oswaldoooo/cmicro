@@ -1,4 +1,75 @@
 ## **CMIRCO**
+### Advanced IO 
+`implement io.ReadWriteCloser`
+```go
+import (
+	"fmt"
+	"os"
+	"github.com/oswaldoooo/cmicro/api/aio"
+)
+
+func main() {
+	ai, err := aio.OpenFile("test.txt", os.O_RDWR|os.O_EXCL, 0644)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "[error]", err.Error())
+		return
+	}
+	buffer := make([]byte, 1<<10)
+	var lang int
+	lang, err = ai.Read(buffer)
+	if err == nil {
+		fmt.Println(string(buffer[:lang]))
+		_, err = ai.Write([]byte("\ni change it"))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "[wirte error]", err.Error())
+		}
+	} else {
+		fmt.Fprintln(os.Stderr, "[error]", err.Error())
+	}
+	// time.Sleep(30 * time.Second)
+	err = ai.Close()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "[close error]", err.Error())
+	}
+}
+```
+### Semaphore
+**system v**
+```go
+import (
+	"fmt"
+	"os"
+	"os/signal"
+	"time"
+
+	"github.com/oswaldoooo/cmicro/sys"
+)
+
+func main() {
+	sem, err := sys.CreateSem(sys.SYSTEMV)
+	if err == nil {
+		ch := make(chan os.Signal)
+		signal.Notify(ch, os.Interrupt)
+		go func() {
+			<-ch
+			sem.Close()
+			os.Exit(0)
+		}()
+		go func() {
+			for i := 0; i < 10; i++ {
+				time.Sleep(time.Second)
+				sem.Post()//send signal
+			}
+		}()
+		for {
+			sem.Wait()//wait semaphore
+			fmt.Println("accept semaphore")
+		}
+	} else {
+		fmt.Fprintln(os.Stderr, "[error]", err.Error())
+	}
+}
+```
 ### Share Memory
 **posix**
 ```go
