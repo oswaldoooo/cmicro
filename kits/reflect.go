@@ -163,3 +163,57 @@ func Tofunc[T any](src any, dst *T) bool {
 	*dst, ok = src.(T)
 	return ok
 }
+
+// if struct copy,dst must be large side,src must be small side
+func memcopy[T, B any](dst *T, src *B) (err error) {
+	dtp, stp := reflect.TypeOf(dst), reflect.TypeOf(src)
+	dvl, svl := reflect.ValueOf(dst), reflect.ValueOf(src)
+	if dvl != svl {
+		// fmt.Println(dtp == stp, dtp.Elem().Kind(), stp.Elem().Kind())
+		if dtp == stp {
+			// fmt.Println(dvl.Elem().CanSet())
+			if dvl.Elem().CanSet() {
+				dvl.Elem().Set(svl.Elem())
+			}
+		} else if dtp.Elem().Kind() == stp.Elem().Kind() && dtp.Elem().Kind() == reflect.Struct {
+			//todo: struct set value is not complete yet
+			dtp, stp = dtp.Elem(), stp.Elem()
+			dvl, svl = dvl.Elem(), svl.Elem()
+			var (
+				i, j                 = 0, 0
+				dcount, scount       = dtp.NumField(), stp.NumField()
+				parse_pos      []int = make([]int, scount)
+				dftp, sftp     reflect.Type
+			)
+			for i < dcount && j < scount {
+				dftp, sftp = dtp.Field(i).Type, stp.Field(j).Type
+			compare:
+				if dftp == sftp {
+					if dftp.Kind() == reflect.Pointer {
+						dftp, sftp = dftp.Elem(), sftp.Elem()
+						goto compare
+					} else if dftp.Kind() == reflect.Struct {
+						
+					}
+					// fmt.Println(i, j, dvl.Field(i).CanSet())
+					if dvl.Field(i).CanSet() {
+						parse_pos[j] = i
+						j++
+						// dvl.Field(i).Set(svl.Field(j))
+					}
+				}
+				i++
+			}
+			if j != scount {
+				err = str_error("parse failed")
+			} else {
+				for i := 0; i < scount; i++ {
+					dvl.Field(parse_pos[i]).Set(svl.Field(i))
+				}
+			}
+		} else {
+			err = str_error("type not copiable")
+		}
+	}
+	return
+}
