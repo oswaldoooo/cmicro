@@ -171,9 +171,7 @@ func memcopy[T, B any](dst *T, src *B) (err error) {
 	dtp, stp := reflect.TypeOf(dst), reflect.TypeOf(src)
 	dvl, svl := reflect.ValueOf(dst), reflect.ValueOf(src)
 	if dvl != svl {
-		// fmt.Println(dtp == stp, dtp.Elem().Kind(), stp.Elem().Kind())
 		if dtp == stp {
-			// fmt.Println(dvl.Elem().CanSet())
 			if dvl.Elem().CanSet() {
 				dvl.Elem().Set(svl.Elem())
 			}
@@ -197,11 +195,9 @@ func memcopy[T, B any](dst *T, src *B) (err error) {
 					} else if dftp.Kind() == reflect.Struct {
 
 					}
-					// fmt.Println(i, j, dvl.Field(i).CanSet())
 					if dvl.Field(i).CanSet() {
 						parse_pos[j] = i
 						j++
-						// dvl.Field(i).Set(svl.Field(j))
 					}
 				}
 				i++
@@ -241,51 +237,12 @@ func StructCopy[T, B any](dst *T, src *B) error {
 
 // copy data with compatible
 func struct_copy(dtp, stp reflect.Type, dvl, svl reflect.Value) (err error) {
-	fmt.Println(struct_copy_prepare(dtp, stp, dvl) == nil)
-	return
-	// dtp, stp := reflect.TypeOf(dst).Elem(), reflect.TypeOf(src).Elem()
-	if dtp.Kind() != reflect.Struct || stp.Kind() != reflect.Struct {
-		err = str_error("args must be struct pointer")
-		return
-	}
-	// dvl, svl := reflect.ValueOf(dst).Elem(), reflect.ValueOf(src).Elem()
-	var (
-		dcount, scount = dtp.NumField(), stp.NumField()
-		copy_pos       []int
-	)
-	if scount > dcount {
-		err = str_error("src field must small tha dst")
-		return
-	}
-	copy_pos = make([]int, scount)
-	var (
-		i, j       int = 0, 0
-		dftp, sftp reflect.Type
-		dfvl, sfvl reflect.Value
-	)
-	for i < dcount && j < scount {
-		dftp, sftp = dtp.Field(i).Type, stp.Field(j).Type
-		dfvl, sfvl = dvl.Field(i), svl.Field(j)
-		if dftp == sftp {
-			if dftp.Kind() == reflect.Pointer {
-				dfvl = dfvl.Elem()
-			}
-			if dfvl.CanSet() {
-				copy_pos[j] = i
-				j++
-			}
-		} else {
-			if dftp.Kind() == sftp.Kind() {
-				if dftp.Kind() == reflect.Pointer && dftp.Elem().Kind() == sftp.Elem().Kind() && dftp.Elem().Kind() == reflect.Struct { //struct's pointer
-					err = struct_copy(dftp.Elem(), sftp.Elem(), sfvl.Elem(), sfvl.Elem())
-				} else if dftp.Kind() == reflect.Struct { //struct instance
-					err = struct_copy(dftp, sftp, dfvl, sfvl)
-				}
-			} else {
-				err = str_error("type don't compare")
-			}
+	if opts := struct_copy_prepare(dtp, stp, dvl); opts != nil {
+		if !struct_copy_stmt(dvl, svl, opts) {
+			err = str_error("parse failed")
 		}
-		i++
+	} else {
+		err = str_error("can't copy src to dst")
 	}
 	return
 }
@@ -318,10 +275,10 @@ func struct_copy_prepare(dtp, stp reflect.Type, dvl reflect.Value) []copy_option
 		umask = 0
 		if dftp == sftp { //type same
 			if dfvl.CanSet() {
-				ans = append(ans, copy_option{j, SETVAL, nil})
+				ans = append(ans, copy_option{i, SETVAL, nil})
 				j++
 			} else if dftp.Kind() == reflect.Pointer && dfvl.Elem().CanSet() {
-				ans = append(ans, copy_option{j, SETVAL_, nil})
+				ans = append(ans, copy_option{i, SETVAL_, nil})
 				j++
 			}
 		} else if dftp.Kind() == sftp.Kind() { //type don't same
@@ -333,7 +290,7 @@ func struct_copy_prepare(dtp, stp reflect.Type, dvl reflect.Value) []copy_option
 			}
 			child_co = struct_copy_prepare(dftp, sftp, dfvl)
 			if child_co != nil {
-				ans = append(ans, copy_option{j, SETVAL_STRUCT + umask, child_co})
+				ans = append(ans, copy_option{i, SETVAL_STRUCT + umask, child_co})
 				j++
 			}
 		}
