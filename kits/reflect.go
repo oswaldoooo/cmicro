@@ -1,6 +1,8 @@
 package kits
 
 import (
+	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 )
@@ -162,4 +164,167 @@ func Tofunc[T any](src any, dst *T) bool {
 	var ok bool
 	*dst, ok = src.(T)
 	return ok
+}
+
+// if struct copy,dst must be large side,src must be small side
+func memcopy[T, B any](dst *T, src *B) (err error) {
+	dtp, stp := reflect.TypeOf(dst), reflect.TypeOf(src)
+	dvl, svl := reflect.ValueOf(dst), reflect.ValueOf(src)
+	if dvl != svl {
+		if dtp == stp {
+			if dvl.Elem().CanSet() {
+				dvl.Elem().Set(svl.Elem())
+			}
+		} else if dtp.Elem().Kind() == stp.Elem().Kind() && dtp.Elem().Kind() == reflect.Struct {
+			//todo: struct set value is not complete yet
+			dtp, stp = dtp.Elem(), stp.Elem()
+			dvl, svl = dvl.Elem(), svl.Elem()
+			var (
+				i, j                 = 0, 0
+				dcount, scount       = dtp.NumField(), stp.NumField()
+				parse_pos      []int = make([]int, scount)
+				dftp, sftp     reflect.Type
+			)
+			for i < dcount && j < scount {
+				dftp, sftp = dtp.Field(i).Type, stp.Field(j).Type
+			compare:
+				if dftp == sftp {
+					if dftp.Kind() == reflect.Pointer {
+						dftp, sftp = dftp.Elem(), sftp.Elem()
+						goto compare
+					} else if dftp.Kind() == reflect.Struct {
+
+					}
+					if dvl.Field(i).CanSet() {
+						parse_pos[j] = i
+						j++
+					}
+				}
+				i++
+			}
+			if j != scount {
+				err = str_error("parse failed")
+			} else {
+				for i := 0; i < scount; i++ {
+					dvl.Field(parse_pos[i]).Set(svl.Field(i))
+				}
+			}
+		} else {
+			err = str_error("type not copiable")
+		}
+	}
+	return
+}
+
+// problem: copy need sure whether support, if don't support, can't copy any val to dst's field
+const ( //method
+	SETVAL         = 0x01
+	SETVAL_        = 0x02 //it's pointer need elem() and set
+	SETVAL_STRUCT  = 0x03 //it's struct instance
+	SETVAL_STRUCT_ = 0x04 //it's struct pointer,need elem
+)
+
+type copy_option struct {
+	pos                int
+	method             uint8
+	child_copy_options []copy_option
+}
+
+func StructCopy[T, B any](dst *T, src *B) error {
+	struct_copy(reflect.TypeOf(dst).Elem(), reflect.TypeOf(src).Elem(), reflect.ValueOf(dst).Elem(), reflect.ValueOf(src).Elem())
+	return nil
+}
+
+// copy data with compatible
+func struct_copy(dtp, stp reflect.Type, dvl, svl reflect.Value) (err error) {
+	if opts := struct_copy_prepare(dtp, stp, dvl); opts != nil {
+		if !struct_copy_stmt(dvl, svl, opts) {
+			err = str_error("parse failed")
+		}
+	} else {
+		err = str_error("can't copy src to dst")
+	}
+	return
+}
+
+func struct_copy_prepare(dtp, stp reflect.Type, dvl reflect.Value) []copy_option {
+	var (
+		ans            []copy_option
+		dcount, scount int
+	)
+	if dtp.Kind() != reflect.Struct || stp.Kind() != reflect.Struct {
+		fmt.Fprintln(os.Stderr, "src or dst is not struct")
+		return nil
+	}
+	dcount, scount = dtp.NumField(), stp.NumField()
+	if scount > dcount {
+		fmt.Fprintln(os.Stderr, "src field number can't over dst field number")
+		return nil
+	}
+	ans = make([]copy_option, 0, scount)
+	var (
+		i, j             = 0, 0
+		umask      uint8 = 0
+		dftp, sftp reflect.Type
+		dfvl       reflect.Value
+		child_co   []copy_option = nil
+	)
+	for i < dcount && j < scount {
+		dftp, sftp = dtp.Field(i).Type, stp.Field(j).Type
+		dfvl = dvl.Field(i)
+		umask = 0
+		if dftp == sftp { //type same
+			if dfvl.CanSet() {
+				ans = append(ans, copy_option{i, SETVAL, nil})
+				j++
+			} else if dftp.Kind() == reflect.Pointer && dfvl.Elem().CanSet() {
+				ans = append(ans, copy_option{i, SETVAL_, nil})
+				j++
+			}
+		} else if dftp.Kind() == sftp.Kind() { //type don't same
+			if dftp.Kind() == reflect.Pointer && dftp.Elem().Kind() == reflect.Struct && sftp.Elem().Kind() == reflect.Struct {
+				// this is *struct and *struct
+				umask = 1
+				dftp, sftp = dftp.Elem(), sftp.Elem()
+				dfvl = dfvl.Elem()
+			}
+			child_co = struct_copy_prepare(dftp, sftp, dfvl)
+			if child_co != nil {
+				ans = append(ans, copy_option{i, SETVAL_STRUCT + umask, child_co})
+				j++
+			}
+		}
+		i++
+	}
+	if len(ans) < scount { //src can't copy complete
+		fmt.Fprintln(os.Stderr, "[iherit error]failed iherit")
+		return nil
+	}
+	return ans
+}
+
+// totest:
+func struct_copy_stmt(dvl, svl reflect.Value, opts []copy_option) bool {
+	if opts == nil || len(opts) == 0 || len(opts) != svl.NumField() {
+		return false
+	}
+	for key, opt := range opts {
+		switch opt.method {
+		case SETVAL:
+			dvl.Field(opt.pos).Set(svl.Field(key))
+		case SETVAL_:
+			dvl.Field(opt.pos).Elem().Set(svl.Field(key).Elem())
+		case SETVAL_STRUCT:
+			if !struct_copy_stmt(dvl.Field(opt.pos), svl.Field(key), opt.child_copy_options) {
+				return false
+			}
+		case SETVAL_STRUCT_:
+			if !struct_copy_stmt(dvl.Field(opt.pos).Elem(), svl.Field(key).Elem(), opt.child_copy_options) {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
