@@ -328,3 +328,93 @@ func struct_copy_stmt(dvl, svl reflect.Value, opts []copy_option) bool {
 	}
 	return true
 }
+//bind map to your struct
+func Bind[T any](v *T, src map[string]any) error {
+	var err error
+	prepare := bind_prepare(v, &src)
+	// fmt.Println("[debug]", len(prepare))
+	if len(prepare) == len(src) {
+		var i int = 0
+		var ele any
+		var key string
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println(prepare[key].Type().Kind(), reflect.TypeOf(ele).Kind(), prepare[key].CanConvert(reflect.TypeOf(ele)))
+			}
+		}()
+		var ptp, stp reflect.Type
+		for key, ele = range src {
+			key = totitle(key)
+			stp = reflect.TypeOf(ele)
+			ptp = prepare[key].Type()
+			if !stp.AssignableTo(ptp) && stp.ConvertibleTo(ptp) {
+				prepare[key].Set(reflect.ValueOf(ele).Convert(prepare[key].Type()))
+			} else {
+				prepare[key].Set(reflect.ValueOf(ele))
+			}
+
+			i++
+		}
+	} else {
+		err = str_error("parse failed")
+	}
+	return err
+}
+
+var (
+	zeroval reflect.Value
+)
+
+const add_val = 'a' - 'A'
+
+func totitle(s string) string {
+	if len(s) > 0 {
+		if s[0] >= 'a' && s[0] <= 'z' {
+			s = string([]byte{s[0] - add_val}) + s[1:]
+		}
+	}
+	return s
+}
+func tonormal(s string) string {
+	if len(s) > 0 {
+		if s[0] >= 'A' && s[0] <= 'Z' {
+			s = string([]byte{s[0] + add_val}) + s[1:]
+		}
+	}
+	return s
+}
+func bind_prepare(dst any, src *map[string]any) map[string]reflect.Value {
+	var ans map[string]reflect.Value
+	vl := reflect.ValueOf(src).Elem()
+	dtp, dvl := reflect.TypeOf(dst).Elem(), reflect.ValueOf(dst).Elem()
+	keys := vl.MapKeys()
+	ans = make(map[string]reflect.Value)
+	if len(keys) > 0 || len(keys) > dtp.NumField() {
+		var (
+			dfvl reflect.Value
+			sftp reflect.Type
+			ok   bool
+		)
+		for key, ele := range *src {
+			key = totitle(key)
+			_, ok = dtp.FieldByName(key)
+			if ok {
+				dfvl = dvl.FieldByName(key)
+				sftp = reflect.TypeOf(ele)
+				if dfvl.CanSet() {
+					// fmt.Println(key, dfvl.Type() == reflect.TypeOf(ele), dfvl.Type().AssignableTo(reflect.TypeOf(ele)), reflect.TypeOf(ele).ConvertibleTo(dfvl.Type()))
+					if sftp.AssignableTo(dfvl.Type()) || sftp.ConvertibleTo(dfvl.Type()) {
+						ans[key] = dfvl
+					} else {
+						panic(key + " can't setted")
+					}
+				} else {
+					panic(totitle(key) + " can't settable")
+				}
+			} else {
+				panic("not find " + totitle(key))
+			}
+		}
+	}
+	return ans
+}
