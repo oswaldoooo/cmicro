@@ -229,3 +229,27 @@ func parsemode(v, step, split uint8, buffer []uint8) uint8 {
 	}
 	return lang
 }
+
+func CompressBoolean(p []byte, values ...bool) {
+	for k, v := range values {
+		if k%8 == 0 && len(p) <= k/8 {
+			return
+		}
+		if v {
+			p[k/8] += 1 << (k % 8)
+		}
+	}
+}
+func Extract(p uint8, dsts ...*bool) {
+	if len(dsts) > 8 {
+		dsts = dsts[:8]
+	}
+	for _, v := range dsts {
+		if p%2 == 1 {
+			*v = true
+		} else {
+			*v = false
+		}
+		p /= 2
+	}
+}
