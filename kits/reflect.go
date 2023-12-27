@@ -5,6 +5,9 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"errors"
+	"flag"
+	"strings"
 )
 
 type str_error string
@@ -327,4 +330,116 @@ func struct_copy_stmt(dvl, svl reflect.Value, opts []copy_option) bool {
 		}
 	}
 	return true
+}
+
+//bind to flag
+var (
+	Stderr = os.Stderr
+	Stdout = os.Stdout
+)
+
+func FlagParse[T any](fs *flag.FlagSet, v *T) error {
+	if reflect.TypeOf(v).Elem().Kind() != reflect.Struct {
+		return errors.New("input args is not struct")
+	}
+	vl := reflect.ValueOf(v).Elem()
+	if !vl.CanSet() {
+		return errors.New("v is not can set")
+	}
+	return flagparse(reflect.ValueOf(fs), vl)
+}
+func flagparse(fs reflect.Value, vl reflect.Value) error {
+	tp := vl.Type()
+	fn := tp.NumField()
+	if fn == 0 {
+		return nil
+	}
+	var (
+		ff          reflect.StructField
+		fvl, ffvl   reflect.Value
+		ftp         reflect.Type
+		bindptr     reflect.Value
+		flagname    string
+		default_val reflect.Value
+		argslist    []reflect.Value = make([]reflect.Value, 4)
+	)
+	// argslist[0] = vl
+	for i := 0; i < fn; i++ {
+		fvl = vl.Field(i)
+		ff = tp.Field(i)
+		ftp = ff.Type
+		switch ftp.Kind() {
+		case reflect.Int:
+			ffvl = fs.MethodByName("IntVar")
+			default_val = reflect.ValueOf(0)
+		case reflect.Float64:
+			ffvl = fs.MethodByName("Float64Var")
+			default_val = reflect.ValueOf(0.00)
+		case reflect.Bool:
+			ffvl = fs.MethodByName("BoolVar")
+			default_val = reflect.ValueOf(false)
+		case reflect.String:
+			ffvl = fs.MethodByName("StringVar")
+			default_val = reflect.ValueOf("")
+		case reflect.Struct:
+			flagparse(fs, fvl)
+			continue
+		default:
+			fmt.Fprintln(Stderr, "don't support", ftp.Kind())
+			continue
+		}
+
+		flagname = ff.Tag.Get("flag")
+		if len(flagname) == 0 {
+			flagname = strings.ToLower(ff.Name)
+		} else {
+			if newdefault, ok := parseflagtag(&flagname, ftp.Kind()); ok {
+				default_val = newdefault
+			}
+		}
+		//debug
+		fmt.Fprintln(Stdout, "use flag", flagname)
+		//
+		bindptr = fvl.Addr()
+		argslist[0] = bindptr
+		argslist[1] = reflect.ValueOf(flagname)
+		argslist[2] = default_val
+		argslist[3] = reflect.ValueOf(strings.ReplaceAll(flagname, "_", " "))
+		ffvl.Call(argslist)
+	}
+	return nil
+}
+func parseflagtag(tagstr *string, tp reflect.Kind) (ans reflect.Value, ok bool) {
+	if strings.Count(*tagstr, ";") == 1 {
+		next := strings.IndexByte(*tagstr, ';')
+		val := (*tagstr)[next+1:]
+		if len(val) > 0 {
+			fmt.Fprintln(Stdout, "find value", val)
+			switch tp {
+			case reflect.Int:
+				newvl, err := strconv.Atoi(val)
+				if err == nil {
+					ok = true
+					ans = reflect.ValueOf(newvl)
+				}
+			case reflect.Bool:
+				newvl, err := strconv.ParseBool(val)
+				if err == nil {
+					ok = true
+					ans = reflect.ValueOf(newvl)
+				}
+			case reflect.Float64:
+				newvl, err := strconv.ParseFloat(val, 10)
+				if err == nil {
+					ok = true
+					ans = reflect.ValueOf(newvl)
+				}
+			case reflect.String:
+				ans = reflect.ValueOf(val)
+				ok = true
+			}
+		}
+		*tagstr = (*tagstr)[:next]
+	}
+	return
 }
