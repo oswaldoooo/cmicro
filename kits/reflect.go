@@ -1,12 +1,12 @@
 package kits
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"reflect"
 	"strconv"
-	"errors"
-	"flag"
 	"strings"
 )
 
@@ -332,7 +332,7 @@ func struct_copy_stmt(dvl, svl reflect.Value, opts []copy_option) bool {
 	return true
 }
 
-//bind to flag
+// bind to flag
 var (
 	Stderr = os.Stderr
 	Stdout = os.Stdout
@@ -442,4 +442,96 @@ func parseflagtag(tagstr *string, tp reflect.Kind) (ans reflect.Value, ok bool) 
 		*tagstr = (*tagstr)[:next]
 	}
 	return
+}
+
+type Flag struct {
+	c  map[string][2]reflect.Value
+	fs *flag.FlagSet
+}
+
+func NewFlag(fs *flag.FlagSet) *Flag {
+	return &Flag{c: make(map[string][2]reflect.Value), fs: fs}
+}
+
+func (s *Flag) Bind(v any) error {
+	tp := reflect.TypeOf(v)
+	if tp.Kind() != reflect.Pointer {
+		return str_error("v is not pointer;can't be set")
+	}
+	return s.bind(reflect.ValueOf(v).Elem())
+}
+func (s *Flag) bind(vl reflect.Value) error {
+	tp := vl.Type()
+	fn := tp.NumField()
+	fs := reflect.ValueOf(s.fs)
+	if fn == 0 {
+		return nil
+	}
+	var (
+		ff          reflect.StructField
+		fvl, ffvl   reflect.Value
+		ftp         reflect.Type
+		bindptr     reflect.Value
+		flagname    string
+		default_val reflect.Value
+		argslist    []reflect.Value = make([]reflect.Value, 4)
+	)
+	// argslist[0] = vl
+	for i := 0; i < fn; i++ {
+		fvl = vl.Field(i)
+		ff = tp.Field(i)
+		ftp = ff.Type
+		switch ftp.Kind() {
+		case reflect.Int:
+			ffvl = fs.MethodByName("IntVar")
+			default_val = reflect.ValueOf(0)
+		case reflect.Float64:
+			ffvl = fs.MethodByName("Float64Var")
+			default_val = reflect.ValueOf(0.00)
+		case reflect.Bool:
+			ffvl = fs.MethodByName("BoolVar")
+			default_val = reflect.ValueOf(false)
+		case reflect.String:
+			ffvl = fs.MethodByName("StringVar")
+			default_val = reflect.ValueOf("")
+		case reflect.Struct:
+			flagparse(fs, fvl)
+			continue
+		default:
+			fmt.Fprintln(Stderr, "don't support", ftp.Kind())
+			continue
+		}
+
+		flagname = ff.Tag.Get("flag")
+		if len(flagname) == 0 {
+			flagname = strings.ToLower(ff.Name)
+		} else {
+			if newdefault, ok := parseflagtag(&flagname, ftp.Kind()); ok {
+				default_val = newdefault
+			}
+		}
+		//debug
+		fmt.Fprintln(Stdout, "use flag", flagname)
+		//
+		if _, ok := s.c[flagname]; ok {
+			return str_error("redefined flag " + flagname)
+		}
+		bindptr = reflect.New(ftp)
+		s.c[flagname] = [2]reflect.Value{bindptr, fvl}
+		argslist[0] = bindptr
+		argslist[1] = reflect.ValueOf(flagname)
+		argslist[2] = default_val
+		argslist[3] = reflect.ValueOf(strings.ReplaceAll(flagname, "_", " "))
+		ffvl.Call(argslist)
+	}
+	return nil
+}
+func (s *Flag) Parse(v []string) error {
+	err := s.fs.Parse(v)
+	if err == nil {
+		for _, e := range s.c {
+			e[1].Set(e[0].Elem())
+		}
+	}
+	return err
 }
