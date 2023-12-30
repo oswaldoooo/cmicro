@@ -367,6 +367,10 @@ func flagparse(fs reflect.Value, vl reflect.Value) error {
 	for i := 0; i < fn; i++ {
 		fvl = vl.Field(i)
 		ff = tp.Field(i)
+		flagname = ff.Tag.Get("flag")
+		if flagname == "!" {
+			continue
+		}
 		ftp = ff.Type
 		switch ftp.Kind() {
 		case reflect.Int:
@@ -389,16 +393,19 @@ func flagparse(fs reflect.Value, vl reflect.Value) error {
 			continue
 		}
 
-		flagname = ff.Tag.Get("flag")
-		if len(flagname) == 0 {
-			flagname = strings.ToLower(ff.Name)
-		} else {
+		if len(flagname) > 0 {
 			if newdefault, ok := parseflagtag(&flagname, ftp.Kind()); ok {
 				default_val = newdefault
 			}
 		}
+		if len(flagname) == 0 {
+			flagname = strings.ToLower(ff.Name)
+			if len(flagname) == 0 {
+				continue
+			}
+		}
 		//debug
-		fmt.Fprintln(Stdout, "use flag", flagname)
+		// fmt.Fprintln(Stdout, "use flag", flagname)
 		//
 		bindptr = fvl.Addr()
 		argslist[0] = bindptr
@@ -410,36 +417,38 @@ func flagparse(fs reflect.Value, vl reflect.Value) error {
 	return nil
 }
 func parseflagtag(tagstr *string, tp reflect.Kind) (ans reflect.Value, ok bool) {
-	if strings.Count(*tagstr, ";") == 1 {
-		next := strings.IndexByte(*tagstr, ';')
-		val := (*tagstr)[next+1:]
-		if len(val) > 0 {
-			fmt.Fprintln(Stdout, "find value", val)
-			switch tp {
-			case reflect.Int:
-				newvl, err := strconv.Atoi(val)
-				if err == nil {
-					ok = true
-					ans = reflect.ValueOf(newvl)
-				}
-			case reflect.Bool:
-				newvl, err := strconv.ParseBool(val)
-				if err == nil {
-					ok = true
-					ans = reflect.ValueOf(newvl)
-				}
-			case reflect.Float64:
-				newvl, err := strconv.ParseFloat(val, 10)
-				if err == nil {
-					ok = true
-					ans = reflect.ValueOf(newvl)
-				}
-			case reflect.String:
-				ans = reflect.ValueOf(val)
-				ok = true
-			}
-		}
+	// if strings.Count(*tagstr, ";") == 1 {
+	next := strings.IndexByte(*tagstr, ';')
+	var val string
+	if next >= 0 {
+		val = (*tagstr)[next+1:]
 		*tagstr = (*tagstr)[:next]
+	}
+	if len(val) > 0 {
+		// fmt.Fprintln(Stdout, "find value", val)
+		switch tp {
+		case reflect.Int:
+			newvl, err := strconv.Atoi(val)
+			if err == nil {
+				ok = true
+				ans = reflect.ValueOf(newvl)
+			}
+		case reflect.Bool:
+			newvl, err := strconv.ParseBool(val)
+			if err == nil {
+				ok = true
+				ans = reflect.ValueOf(newvl)
+			}
+		case reflect.Float64:
+			newvl, err := strconv.ParseFloat(val, 10)
+			if err == nil {
+				ok = true
+				ans = reflect.ValueOf(newvl)
+			}
+		case reflect.String:
+			ans = reflect.ValueOf(val)
+			ok = true
+		}
 	}
 	return
 }
@@ -511,7 +520,7 @@ func (s *Flag) bind(vl reflect.Value) error {
 			}
 		}
 		//debug
-		fmt.Fprintln(Stdout, "use flag", flagname)
+		// fmt.Fprintln(Stdout, "use flag", flagname)
 		//
 		if _, ok := s.c[flagname]; ok {
 			return str_error("redefined flag " + flagname)
