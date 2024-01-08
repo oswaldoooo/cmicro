@@ -156,7 +156,7 @@ func Equal[T any](left string, right any, iftrue, ifalse T, delive bool) Option 
 				if tp.Kind() == reflect.String {
 					uselink = true
 				} else {
-					panic(fmt.Sprintf("value type is not same left %s right %s", node._type, tp.Kind().String()))
+					panic(fmt.Sprintf("value type is not same left %d right %s", node._type, tp.Kind().String()))
 				}
 			}
 
@@ -182,6 +182,134 @@ func Equal[T any](left string, right any, iftrue, ifalse T, delive bool) Option 
 			if rightval == node.getv() {
 				nownode.default_val = iftrue
 			} else if !delive {
+				nownode.default_val = ifalse
+			}
+		}
+	}
+}
+func BiggerThan[T int | int32 | int64 | float32 | float64 | string](left string, right any, iftrue, ifalse T, delive bool) Option {
+	rtp := reflect.TypeOf(iftrue)
+	if rtp.Kind() == reflect.Pointer || rtp.Kind() == reflect.Array || rtp.Kind() == reflect.Slice || rtp.Kind() == reflect.Map || rtp.Kind() == reflect.Struct || rtp.Kind() == reflect.Chan {
+		panic("right value is pointer,not support " + rtp.Kind().String() + " be rightvalue")
+	}
+	tp := reflect.TypeOf(right)
+	if tp.Kind() != reflect.Int && tp.Kind() != reflect.Float64 && tp.Kind() != reflect.String {
+		panic("right value is pointer,not support " + rtp.Kind().String() + " be rightvalue")
+	}
+	return func(s string, b bool, fs *FlagSet) {
+		if !b {
+			node := fs.bind_kv[left]
+			var rnode, nownode *flagnode
+			nownode = fs.bind_kv[s]
+			if nownode._type != uint(rtp.Kind()) {
+				panic("type not same")
+			}
+			if tp.Kind() == reflect.String {
+				rnode = fs.bind_kv[right.(string)]
+				switch rnode._type {
+				case INT, FLOAT:
+				default:
+					panic("right value type is not number")
+				}
+			} else {
+				// val := right
+				rnode = &flagnode{_type: uint(tp.Kind())}
+				switch rnode._type {
+				case INT:
+					var val int = right.(int)
+					rnode.intptr = &val
+				case FLOAT:
+					var val float64 = right.(float64)
+					rnode.floatptr = &val
+				}
+			}
+			var ans bool
+
+			switch node._type {
+			case INT:
+				// fmt.Println(node._type, *node.intptr, rnode._type)
+				if rnode._type != INT {
+					ans = *node.intptr > int(*rnode.floatptr)
+				} else {
+					ans = *node.intptr > *rnode.intptr
+				}
+			case FLOAT:
+				// fmt.Println(node._type, *node.floatptr, rnode._type)
+				if rnode._type != INT {
+					ans = *node.floatptr > float64(*rnode.intptr)
+				} else {
+					ans = *node.floatptr > *rnode.floatptr
+				}
+			}
+			if ans {
+				// reflect.ValueOf(nownode).Elem().Set(reflect.ValueOf(iftrue))
+				nownode.default_val = iftrue
+			} else if !delive {
+				// reflect.ValueOf(nownode).Elem().Set(reflect.ValueOf(ifalse))
+				nownode.default_val = ifalse
+			}
+		}
+	}
+}
+func SmallThan[T int | int32 | int64 | float32 | float64 | string](left string, right any, iftrue, ifalse T, delive bool) Option {
+	rtp := reflect.TypeOf(iftrue)
+	if rtp.Kind() == reflect.Pointer || rtp.Kind() == reflect.Array || rtp.Kind() == reflect.Slice || rtp.Kind() == reflect.Map || rtp.Kind() == reflect.Struct || rtp.Kind() == reflect.Chan {
+		panic("right value is pointer,not support " + rtp.Kind().String() + " be rightvalue")
+	}
+	tp := reflect.TypeOf(right)
+	if tp.Kind() != reflect.Int && tp.Kind() != reflect.Float64 && tp.Kind() != reflect.String {
+		panic("right value is pointer,not support " + rtp.Kind().String() + " be rightvalue")
+	}
+	return func(s string, b bool, fs *FlagSet) {
+		if !b {
+			node := fs.bind_kv[left]
+			var rnode, nownode *flagnode
+			nownode = fs.bind_kv[s]
+			if nownode._type != uint(rtp.Kind()) {
+				panic("type not same")
+			}
+			if tp.Kind() == reflect.String {
+				rnode = fs.bind_kv[right.(string)]
+				switch rnode._type {
+				case INT, FLOAT:
+				default:
+					panic("right value type is not number")
+				}
+			} else {
+				// val := right
+				rnode = &flagnode{_type: uint(tp.Kind())}
+				switch rnode._type {
+				case INT:
+					var val int = right.(int)
+					rnode.intptr = &val
+				case FLOAT:
+					var val float64 = right.(float64)
+					rnode.floatptr = &val
+				}
+			}
+			var ans bool
+
+			switch node._type {
+			case INT:
+				// fmt.Println(node._type, *node.intptr, rnode._type)
+				if rnode._type != INT {
+					ans = *node.intptr < int(*rnode.floatptr)
+				} else {
+					ans = *node.intptr < *rnode.intptr
+				}
+			case FLOAT:
+				// fmt.Println(node._type, *node.floatptr, rnode._type)
+				if rnode._type != INT {
+					ans = *node.floatptr < float64(*rnode.intptr)
+				} else {
+					ans = *node.floatptr < *rnode.floatptr
+				}
+			}
+			if ans {
+				// reflect.ValueOf(nownode).Elem().Set(reflect.ValueOf(iftrue))
+				nownode.default_val = iftrue
+			} else if !delive {
+				// reflect.ValueOf(nownode).Elem().Set(reflect.ValueOf(ifalse))
 				nownode.default_val = ifalse
 			}
 		}
