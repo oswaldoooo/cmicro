@@ -25,6 +25,6 @@ func NewPointer2[T any](b []byte) *Pointer[T] {
 	}
 	return nil
 }
-func (s *Pointer[T]) Out() []byte {
+func (s *Pointer[T]) Bytes() []byte {
 	return s.b
 }
