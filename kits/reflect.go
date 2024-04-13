@@ -422,7 +422,12 @@ func parseflagtag(tagstr *string, tp reflect.Kind) (ans reflect.Value, ok bool) 
 	var val string
 	if next >= 0 {
 		val = (*tagstr)[next+1:]
-		*tagstr = (*tagstr)[:next]
+		if next > 0 {
+			*tagstr = (*tagstr)[:next]
+		} else {
+			*tagstr = ""
+		}
+
 	}
 	if len(val) > 0 {
 		// fmt.Fprintln(Stdout, "find value", val)
@@ -489,6 +494,11 @@ func (s *Flag) bind(vl reflect.Value) error {
 	for i := 0; i < fn; i++ {
 		fvl = vl.Field(i)
 		ff = tp.Field(i)
+		flagname = ff.Tag.Get("flag")
+		// fmt.Println("check flag", flagname, ff.Name)
+		if flagname == "!" {
+			continue
+		}
 		ftp = ff.Type
 		switch ftp.Kind() {
 		case reflect.Int:
@@ -510,17 +520,15 @@ func (s *Flag) bind(vl reflect.Value) error {
 			fmt.Fprintln(Stderr, "don't support", ftp.Kind())
 			continue
 		}
-
-		flagname = ff.Tag.Get("flag")
+		// fmt.Println("flag len", len(flagname))
+		if newdefault, ok := parseflagtag(&flagname, ftp.Kind()); ok {
+			default_val = newdefault
+		}
 		if len(flagname) == 0 {
 			flagname = strings.ToLower(ff.Name)
-		} else {
-			if newdefault, ok := parseflagtag(&flagname, ftp.Kind()); ok {
-				default_val = newdefault
-			}
 		}
 		//debug
-		// fmt.Fprintln(Stdout, "use flag", flagname)
+		// fmt.Fprintln(Stdout, "use flag", flagname, ff.Name)
 		//
 		if _, ok := s.c[flagname]; ok {
 			return str_error("redefined flag " + flagname)
