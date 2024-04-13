@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+
+	"github.com/oswaldoooo/cmicro/pkg/algorithm"
 )
 
 type EnumMode interface {
@@ -252,4 +254,87 @@ func Extract(p uint8, dsts ...*bool) {
 		}
 		p /= 2
 	}
+}
+
+var nextcap func(int64) int64 = default_next_cap
+
+// slice extend
+func extend[T any](src []T) []T {
+	old := len(src)
+	newcap := nextcap(int64(old))
+	newarr := make([]T, newcap)
+	copy(newarr[:old], src)
+	return newarr
+}
+
+// 516~2048 2~1.25
+func default_next_cap(old int64) int64 {
+	newnext := old * 2
+	if old > 516 {
+		newnext = old + old/4
+		if old < 2048 {
+			newnext += (1532 - (old - 516)) * 3 / 4
+		}
+	}
+	return newnext
+}
+
+// set
+type Sorter interface {
+	Less(Sorter) bool
+	Equal(Sorter) bool
+}
+type Set[T any] struct {
+	core []T
+	top  int
+	cmp  func(*T, *T) int //0 equal,left<rigth -1
+}
+
+// cmp func result meaning: 0 equal,-1 left<rigth
+func NewSet[T any](cmp func(*T, *T) int) *Set[T] {
+	if cmp == nil {
+		panic("compare function can't be set nil")
+	}
+	return &Set[T]{core: make([]T, 20), cmp: cmp}
+}
+func (s *Set[T]) Set(v T) {
+	pos, need_insert := algorithm.Binary_Search(s.core, s.top, v, func(i int, t T) int {
+		return s.cmp(&s.core[i], &v)
+	})
+	if need_insert {
+		if s.top+1 >= len(s.core) {
+			s.core = algorithm.Append(s.core)
+		}
+		copy(s.core[pos:s.top], s.core[pos+1:s.top+1])
+		s.core[pos] = v
+		s.top++
+	}
+}
+func (s *Set[T]) Delete(v T) {
+	pos, need_insert := algorithm.Binary_Search(s.core, s.top, v, func(i int, t T) int {
+		return s.cmp(&s.core[i], &v)
+	})
+	if !need_insert {
+		copy(s.core[pos:s.top-1], s.core[pos+1:s.top])
+		s.top--
+	}
+}
+func (s *Set[T]) Valid(v T) bool {
+	_, need_insert := algorithm.Binary_Search(s.core, s.top, v, func(i int, t T) int {
+		return s.cmp(&s.core[i], &v)
+	})
+	return !need_insert
+}
+func (s *Set[T]) Range(call func(T) error) error {
+	var err error
+	for i := 0; i < s.top; i++ {
+		err = call(s.core[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (s *Set[T]) Size() int {
+	return s.top
 }
