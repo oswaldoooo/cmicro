@@ -1,4 +1,24 @@
 ## **CMIRCO**
+### Delay Map
+**delay map based on binary_search. it cloud set ttl and callback when data expire.**
+
+**use example**
+```go
+dm := delaymap.NewRDelayMap[string, int](func(s1, s2 *string) int {
+	status := bytes.Compare([]byte(*s1), []byte(*s2))
+	// fmt.Printf("compare %s %s status %d\n", *s1, *s2, status)
+	return status
+})
+go dm.Run() //start backend to watch expire data.
+dm.Set("action", 10, 0)//this data will never be expired
+dm.Set("action2", 20, time.Second*3)//this data will expire after 3sec
+dm.Set("action3", 20, 5*time.Second)//this data will expire after 5sec
+dm.Delete("action3")
+dm.SetCallBackWhenExpire("action2", func() {//when action2 expired,delay map will do this callback function
+		fmt.Println("hello action2 called")
+	})
+fmt.Printf("status: action %v action2 %v action3 %v\n", dm.Get("action"), dm.Get("action2"), dm.Get("action3"))
+```
 ### Any Function Loader
 `can load any function in golang;`use example
 ```go
