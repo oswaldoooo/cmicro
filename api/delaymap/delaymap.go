@@ -128,6 +128,17 @@ func (r *RDelayMap[Key, Val]) getpair(k Key) (pair[Key, Val], bool) {
 	return pair[Key, Val]{}, false
 }
 
+// range function
+func (r *RDelayMap[Key, Val]) Range(call func(Key, Val) error) (err error) {
+	for i := 0; i < r.top; i++ {
+		err = call(r.core[i].Key, r.core[i].Val)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
 // run with block
 func (r *RDelayMap[Key, Val]) Run() {
 	var (
