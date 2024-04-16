@@ -305,7 +305,7 @@ func (s *Set[T]) Set(v T) {
 		if s.top+1 >= len(s.core) {
 			s.core = algorithm.Append(s.core)
 		}
-		copy(s.core[pos:s.top], s.core[pos+1:s.top+1])
+		copy(s.core[pos+1:s.top+1], s.core[pos:s.top])
 		s.core[pos] = v
 		s.top++
 	}

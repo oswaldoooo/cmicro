@@ -60,7 +60,7 @@ func (r *RDelayMap[Key, Val]) Set(key Key, val Val, ttl time.Duration) {
 		if r.top+1 >= corelen {
 			r.core = algorithm.Append(r.core)
 		}
-		copy(r.core[pos:r.top], r.core[pos+1:r.top+1])
+		copy(r.core[pos+1:r.top+1], r.core[pos:r.top])
 		r.top++
 	}
 	r.core[pos] = p
@@ -186,6 +186,7 @@ func (r *RDelayMap[Key, Val]) Run() {
 				call_list[pos].call()
 			}
 		}
+		fmt.Println("key is deleted", call_list[pos].Key)
 		r.Delete(call_list[pos].Key)
 		r.sets_lock.Lock()
 		r.sets.Delete(call_list[pos].Key)
