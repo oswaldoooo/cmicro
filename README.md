@@ -1,4 +1,8 @@
 ## **CMIRCO**
+### Ternary Expression
+`sys.TernaryExpressionFunc(1 > 2, counthello, jimhello, 23, "jesko")`
+
+`name := sys.TernaryExpression(1 > 2, 23, 11)`
 ### Delay Map
 **delay map based on binary_search. it cloud set ttl and callback when data expire.**
 

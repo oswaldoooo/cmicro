@@ -247,3 +247,31 @@ func CreateSem(mod uint8, opts ...any) (sem Semaphore, err error) {
 	}
 	return
 }
+
+// ternary expressions
+func TernaryExpression[T any](ok bool, left, right T) T {
+	if ok {
+		return left
+	}
+	return right
+}
+
+// ternary expression for function
+func TernaryExpressionFunc[T any](ok bool, left, right T, args ...any) {
+	if reflect.TypeOf(left).Kind() != reflect.Func {
+		panic("ternary expression func must be function template")
+	}
+	f := TernaryExpression(ok, left, right)
+	fval := reflect.ValueOf(f)
+	ftp := reflect.TypeOf(f)
+	if ftp.NumIn() != len(args) {
+		panic("function args required")
+	}
+	var (
+		arg []reflect.Value = make([]reflect.Value, 0, len(args))
+	)
+	for i := 0; i < ftp.NumIn(); i++ {
+		arg = append(arg, reflect.ValueOf(args[i]).Convert(ftp.In(i)))
+	}
+	fval.Call(arg)
+}
