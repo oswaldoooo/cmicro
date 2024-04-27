@@ -28,3 +28,36 @@ type NetService struct {
 	Address string `json:"address" yaml:"address" xml:"address"`
 	Type    int8   `json:"type" yaml:"type" xml:"type"`
 }
+
+type Node struct {
+	Next  *Node
+	Value any
+}
+type Stack struct {
+	head *Node
+	tail *Node
+	size int
+}
+
+func (s *Stack) PushBack(val any) {
+	if s.head == nil {
+		s.head = &Node{Value: val}
+		s.tail = s.head
+	} else {
+		s.tail.Next = &Node{Value: val}
+		s.tail = s.tail.Next
+	}
+	s.size++
+}
+func (s *Stack) PopHead() any {
+	if s.head == nil {
+		panic("stack is nil")
+	}
+	val := s.head.Value
+	s.head = s.head.Next
+	s.size--
+	return val
+}
+func (s *Stack) Size() int {
+	return s.size
+}
