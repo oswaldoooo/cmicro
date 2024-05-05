@@ -40,6 +40,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -274,4 +275,30 @@ func TernaryExpressionFunc[T any](ok bool, left, right T, args ...any) {
 		arg = append(arg, reflect.ValueOf(args[i]).Convert(ftp.In(i)))
 	}
 	fval.Call(arg)
+}
+
+func TernaryExpressFunc(ok bool, left, right func()) {
+	if ok {
+		left()
+	} else {
+		right()
+	}
+}
+
+func ToFunc(f any, args ...any) func() {
+	ftp := reflect.TypeOf(f)
+	if ftp.Kind() != reflect.Func {
+		panic("tofunc 1st arg must be func")
+	}
+	fval := reflect.ValueOf(f)
+	if ftp.NumIn() != len(args) {
+		panic("need arg " + strconv.Itoa(ftp.NumIn()) + " provide " + strconv.Itoa(len(args)))
+	}
+	return func() {
+		var a = make([]reflect.Value, 0, len(args))
+		for i := range args {
+			a = append(a, reflect.ValueOf(args[i]).Convert(ftp.In(i)))
+		}
+		fval.Call(a)
+	}
 }

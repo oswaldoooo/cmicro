@@ -17,3 +17,7 @@ func TestTernaryExp(t *testing.T) {
 	sys.TernaryExpressionFunc(1 > 2, counthello, jimhello, 23, "jesko")
 	sys.TernaryExpressionFunc(1 < 2, counthello, jimhello, 23, "jesko")
 }
+
+func TestTernaryExpFunc(t *testing.T) {
+	sys.TernaryExpressFunc(1 < 2, sys.ToFunc(counthello, 23, "jesko"), sys.ToFunc(jimhello, 23, "jim"))
+}
